@@ -12,9 +12,11 @@ if (process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL) {
   pool = new Pool({
     connectionString: connectionString,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000, // 10 seconds
-    idleTimeoutMillis: 30000,       // 30 seconds
-    max: 10,                        // Maximum pool size
+    connectionTimeoutMillis: 30000, // 30 seconds (increased from 10)
+    idleTimeoutMillis: 60000,       // 60 seconds (increased from 30)
+    max: 20,                        // Maximum pool size (increased from 10)
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0,
   });
 } else {
   console.log("🔗 Using individual database environment variables");
@@ -24,6 +26,11 @@ if (process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL) {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 5432,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
+    max: 20,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0,
   });
 }
 

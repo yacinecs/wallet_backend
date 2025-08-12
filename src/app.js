@@ -7,6 +7,9 @@ const { initializeDatabase } = require("../scripts/init-db");
 const app = express();
 require("dotenv").config();
 
+// Trust proxy for Railway deployment (fixes rate limiting issues)
+app.set('trust proxy', 1);
+
 // Initialize database on startup
 initializeDatabase().catch(console.error);
 
