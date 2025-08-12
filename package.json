@@ -10,6 +10,7 @@
     "test:railway": "node test-railway-deployment.js",
     "db:check": "node check-db.js",
     "db:init": "node scripts/init-db.js",
+    "db:setup": "node setup-db-manual.js",
     "demo": "echo 'Open demo-client.html in your browser after starting the server'"
   },
   "author": "",
