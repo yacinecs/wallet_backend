@@ -30,6 +30,116 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
 
+// Database test endpoint (for debugging Railway deployment)
+app.get("/test-db", async (req, res) => {
+  const pool = require("./config/db");
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Test basic connection
+    const result = await client.query('SELECT NOW() as current_time');
+    
+    // Check if our tables exist
+    const tablesQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+    `;
+    const tables = await client.query(tablesQuery);
+    
+    res.json({
+      status: "success",
+      message: "Database connection successful",
+      currentTime: result.rows[0].current_time,
+      existingTables: tables.rows.map(r => r.table_name),
+      tablesCount: tables.rows.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Database connection failed",
+      error: error.message,
+      code: error.code
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
+// Database setup endpoint (for Railway deployment)
+app.post("/setup-db", async (req, res) => {
+  const pool = require("./config/db");
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Create users table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+      );
+    `);
+    
+    // Create wallets table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        balance DECIMAL(10,2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now()
+      );
+    `);
+    
+    // Create transactions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('deposit', 'withdrawal', 'transfer_in', 'transfer_out')),
+        amount DECIMAL(10,2) NOT NULL,
+        balance_before DECIMAL(10,2) NOT NULL,
+        balance_after DECIMAL(10,2) NOT NULL,
+        recipient_id INTEGER REFERENCES users(id),
+        description TEXT,
+        transaction_hash VARCHAR(255),
+        status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'cancelled')),
+        created_at TIMESTAMP DEFAULT now()
+      );
+    `);
+    
+    // Create indexes
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);`);
+    
+    res.json({
+      status: "success",
+      message: "Database tables created successfully"
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Database setup failed",
+      error: error.message
+    });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+});
+
 // Routes
 const authRoutes = require("./routes/auth");
 const walletRoutes = require("./routes/walletRoutes");
