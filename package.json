@@ -7,7 +7,9 @@
     "dev": "nodemon src/app.js",
     "test": "node test-api.js",
     "test:edge": "node test-edge-cases.js",
+    "test:railway": "node test-railway-deployment.js",
     "db:check": "node check-db.js",
+    "db:init": "node scripts/init-db.js",
     "demo": "echo 'Open demo-client.html in your browser after starting the server'"
   },
   "author": "",

@@ -4,11 +4,9 @@ const transactionController = require('../controllers/transactionController');
 const { authenticateToken } = require('../middleware/auth');
 const { transferLimiter } = require('../middleware/rateLimiter');
 
-// All transaction routes require authentication
-router.use(authenticateToken);
-
-router.get('/transactions', transactionController.getTransactionHistory);
-router.get('/transactions/:transactionId', transactionController.getTransactionById);
-router.post('/transfer', transferLimiter, transactionController.transferMoney);
+// Transaction routes (authentication applied per route)
+router.get('/transactions', authenticateToken, transactionController.getTransactionHistory);
+router.get('/transactions/:transactionId', authenticateToken, transactionController.getTransactionById);
+router.post('/transfer', authenticateToken, transferLimiter, transactionController.transferMoney);
 
 module.exports = router;
