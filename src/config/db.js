@@ -2,9 +2,10 @@ const { Pool } = require("pg");
 require("dotenv").config();
 
 // Use Railway's PostgreSQL URL if available, otherwise use individual env vars
-const pool = process.env.RAILWAY_SERVICE_POSTGRES_URL 
+// Railway provides DATABASE_URL for postgres connections
+const pool = process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL
   ? new Pool({
-      connectionString: process.env.RAILWAY_SERVICE_POSTGRES_URL,
+      connectionString: process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     })
   : new Pool({
