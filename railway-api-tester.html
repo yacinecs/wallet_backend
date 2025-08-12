@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDC Wallet API Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left: 4px solid #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-left: 4px solid #dc3545;
+            background-color: #f8d7da;
+        }
+        .info {
+            border-left: 4px solid #17a2b8;
+            background-color: #d1ecf1;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .token-display {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏦 USDC Wallet API Tester</h1>
+        <p>Test your Railway-hosted backend API</p>
+        <div id="status">
+            <span class="status-indicator status-offline" id="statusIndicator"></span>
+            <span id="statusText">Checking connection...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Configuration Panel -->
+        <div class="panel full-width">
+            <h3>⚙️ Configuration</h3>
+            <label for="apiUrl">API Base URL:</label>
+            <input type="text" id="apiUrl" value="https://brilliant-expression-production.up.railway.app" />
+            <button onclick="checkConnection()">🔄 Test Connection</button>
+            <button onclick="runAllTests()">🧪 Run All Tests</button>
+        </div>
+
+        <!-- Authentication Panel -->
+        <div class="panel">
+            <h3>🔐 Authentication</h3>
+            <div>
+                <h4>Register</h4>
+                <input type="email" id="registerEmail" placeholder="Email" value="test@example.com" />
+                <input type="password" id="registerPassword" placeholder="Password" value="password123" />
+                <input type="text" id="firstName" placeholder="First Name" value="Test" />
+                <input type="text" id="lastName" placeholder="Last Name" value="User" />
+                <button onclick="register()">Register</button>
+            </div>
+            
+            <div>
+                <h4>Login</h4>
+                <input type="email" id="loginEmail" placeholder="Email" value="test@example.com" />
+                <input type="password" id="loginPassword" placeholder="Password" value="password123" />
+                <button onclick="login()">Login</button>
+            </div>
+            
+            <div>
+                <h4>Auth Token</h4>
+                <div class="token-display" id="tokenDisplay">No token</div>
+                <button onclick="clearToken()">Clear Token</button>
+            </div>
+        </div>
+
+        <!-- Wallet Panel -->
+        <div class="panel">
+            <h3>💳 Wallet Operations</h3>
+            <button onclick="getWallet()">Get Wallet Info</button>
+            <button onclick="getBalance()">Get Balance</button>
+            <button onclick="getTransactions()">Get Transactions</button>
+            
+            <div>
+                <h4>Transfer Funds</h4>
+                <input type="email" id="transferEmail" placeholder="Recipient Email" />
+                <input type="number" id="transferAmount" placeholder="Amount" step="0.01" />
+                <input type="text" id="transferDescription" placeholder="Description" />
+                <button onclick="transferFunds()">Transfer</button>
+            </div>
+        </div>
+
+        <!-- Blockchain Panel -->
+        <div class="panel">
+            <h3>⛓️ Blockchain Operations</h3>
+            <button onclick="generateWallet()">Generate Wallet Address</button>
+            <button onclick="getUSDCBalance()">Get USDC Balance</button>
+            <button onclick="getBlockchainTransactions()">Get Blockchain Transactions</button>
+        </div>
+
+        <!-- Testing Panel -->
+        <div class="panel">
+            <h3>🧪 Testing</h3>
+            <button onclick="testRateLimit()">Test Rate Limiting</button>
+            <button onclick="testHealthCheck()">Health Check</button>
+            <button onclick="testInvalidEndpoint()">Test 404 Error</button>
+            <button onclick="testUnauthorized()">Test Unauthorized</button>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="panel full-width">
+            <h3>📋 Results</h3>
+            <button onclick="clearResults()">Clear Results</button>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken') || '';
+        let apiBaseUrl = 'https://brilliant-expression-production.up.railway.app';
+
+        // Update token display
+        function updateTokenDisplay() {
+            const tokenDisplay = document.getElementById('tokenDisplay');
+            if (authToken) {
+                tokenDisplay.textContent = authToken;
+                tokenDisplay.className = 'token-display success';
+            } else {
+                tokenDisplay.textContent = 'No token';
+                tokenDisplay.className = 'token-display';
+            }
+        }
+
+        // Clear token
+        function clearToken() {
+            authToken = '';
+            localStorage.removeItem('authToken');
+            updateTokenDisplay();
+            addResult('Token cleared', 'info');
+        }
+
+        // Update API URL
+        document.getElementById('apiUrl').addEventListener('change', function(e) {
+            apiBaseUrl = e.target.value;
+        });
+
+        // Generic API request function
+        async function makeRequest(endpoint, method = 'GET', body = null, requireAuth = false) {
+            const url = apiBaseUrl + endpoint;
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (requireAuth && authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const options = {
+                method,
+                headers
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                return {
+                    status: response.status,
+                    ok: response.ok,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    status: 0,
+                    ok: false,
+                    data: { error: error.message }
+                };
+            }
+        }
+
+        // Add result to display
+        function addResult(message, type = 'info', data = null) {
+            const results = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            
+            let content = `[${new Date().toLocaleTimeString()}] ${message}`;
+            if (data) {
+                content += '\n' + JSON.stringify(data, null, 2);
+            }
+            
+            resultDiv.textContent = content;
+            results.appendChild(resultDiv);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        // Clear results
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Check connection
+        async function checkConnection() {
+            addResult('🔄 Checking connection...', 'info');
+            const result = await makeRequest('/health');
+            
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            if (result.ok) {
+                statusIndicator.className = 'status-indicator status-online';
+                statusText.textContent = 'Connected';
+                addResult('✅ Connection successful', 'success', result.data);
+            } else {
+                statusIndicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'Disconnected';
+                addResult('❌ Connection failed', 'error', result.data);
+            }
+        }
+
+        // Authentication functions
+        async function register() {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+
+            addResult('🔐 Registering user...', 'info');
+            const result = await makeRequest('/api/auth/register', 'POST', {
+                email, password, firstName, lastName
+            });
+
+            if (result.ok) {
+                addResult('✅ Registration successful', 'success', result.data);
+                if (result.data.token) {
+                    authToken = result.data.token;
+                    localStorage.setItem('authToken', authToken);
+                    updateTokenDisplay();
+                }
+            } else {
+                addResult('❌ Registration failed', 'error', result.data);
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            addResult('🔐 Logging in...', 'info');
+            const result = await makeRequest('/api/auth/login', 'POST', {
+                email, password
+            });
+
+            if (result.ok) {
+                addResult('✅ Login successful', 'success', result.data);
+                if (result.data.token) {
+                    authToken = result.data.token;
+                    localStorage.setItem('authToken', authToken);
+                    updateTokenDisplay();
+                }
+            } else {
+                addResult('❌ Login failed', 'error', result.data);
+            }
+        }
+
+        // Wallet functions
+        async function getWallet() {
+            addResult('💳 Getting wallet info...', 'info');
+            const result = await makeRequest('/api/wallet', 'GET', null, true);
+            
+            if (result.ok) {
+                addResult('✅ Wallet retrieved', 'success', result.data);
+            } else {
+                addResult('❌ Failed to get wallet', 'error', result.data);
+            }
+        }
+
+        async function getBalance() {
+            addResult('💰 Getting balance...', 'info');
+            const result = await makeRequest('/api/wallet/balance', 'GET', null, true);
+            
+            if (result.ok) {
+                addResult('✅ Balance retrieved', 'success', result.data);
+            } else {
+                addResult('❌ Failed to get balance', 'error', result.data);
+            }
+        }
+
+        async function getTransactions() {
+            addResult('📋 Getting transactions...', 'info');
+            const result = await makeRequest('/api/transactions', 'GET', null, true);
+            
+            if (result.ok) {
+                addResult('✅ Transactions retrieved', 'success', result.data);
+            } else {
+                addResult('❌ Failed to get transactions', 'error', result.data);
+            }
+        }
+
+        async function transferFunds() {
+            const recipientEmail = document.getElementById('transferEmail').value;
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+            const description = document.getElementById('transferDescription').value;
+
+            addResult('💸 Transferring funds...', 'info');
+            const result = await makeRequest('/api/transfer', 'POST', {
+                recipientEmail, amount, description
+            }, true);
+            
+            if (result.ok) {
+                addResult('✅ Transfer successful', 'success', result.data);
+            } else {
+                addResult('❌ Transfer failed', 'error', result.data);
+            }
+        }
+
+        // Blockchain functions
+        async function generateWallet() {
+            addResult('⛓️ Generating wallet address...', 'info');
+            const result = await makeRequest('/api/blockchain/generate-wallet', 'POST', null, true);
+            
+            if (result.ok) {
+                addResult('✅ Wallet address generated', 'success', result.data);
+            } else {
+                addResult('❌ Failed to generate wallet', 'error', result.data);
+            }
+        }
+
+        async function getUSDCBalance() {
+            addResult('💎 Getting USDC balance...', 'info');
+            const result = await makeRequest('/api/blockchain/balance', 'GET', null, true);
+            
+            if (result.ok) {
+                addResult('✅ USDC balance retrieved', 'success', result.data);
+            } else {
+                addResult('❌ Failed to get USDC balance', 'error', result.data);
+            }
+        }
+
+        async function getBlockchainTransactions() {
+            addResult('⛓️ Getting blockchain transactions...', 'info');
+            const result = await makeRequest('/api/blockchain/transactions', 'GET', null, true);
+            
+            if (result.ok) {
+                addResult('✅ Blockchain transactions retrieved', 'success', result.data);
+            } else {
+                addResult('❌ Failed to get blockchain transactions', 'error', result.data);
+            }
+        }
+
+        // Testing functions
+        async function testRateLimit() {
+            addResult('🚦 Testing rate limiting...', 'info');
+            const promises = [];
+            for (let i = 0; i < 10; i++) {
+                promises.push(makeRequest('/health'));
+            }
+            
+            const results = await Promise.all(promises);
+            const rateLimited = results.filter(r => r.status === 429);
+            
+            if (rateLimited.length > 0) {
+                addResult('✅ Rate limiting is working', 'success', {
+                    totalRequests: results.length,
+                    rateLimited: rateLimited.length
+                });
+            } else {
+                addResult('ℹ️ Rate limiting not triggered', 'info', {
+                    totalRequests: results.length,
+                    note: 'This is normal for low traffic'
+                });
+            }
+        }
+
+        async function testHealthCheck() {
+            addResult('🏥 Testing health check...', 'info');
+            const result = await makeRequest('/api/health');
+            
+            if (result.ok) {
+                addResult('✅ Health check passed', 'success', result.data);
+            } else {
+                addResult('❌ Health check failed', 'error', result.data);
+            }
+        }
+
+        async function testInvalidEndpoint() {
+            addResult('🔍 Testing 404 error...', 'info');
+            const result = await makeRequest('/api/nonexistent');
+            
+            if (result.status === 404) {
+                addResult('✅ 404 error handled correctly', 'success', result.data);
+            } else {
+                addResult('❌ Unexpected response for 404 test', 'error', result.data);
+            }
+        }
+
+        async function testUnauthorized() {
+            addResult('🚫 Testing unauthorized access...', 'info');
+            const oldToken = authToken;
+            authToken = 'invalid-token';
+            
+            const result = await makeRequest('/api/wallet', 'GET', null, true);
+            authToken = oldToken; // Restore token
+            
+            if (result.status === 401) {
+                addResult('✅ Unauthorized access blocked correctly', 'success', result.data);
+            } else {
+                addResult('❌ Unauthorized access not handled properly', 'error', result.data);
+            }
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            addResult('🚀 Running comprehensive API test suite...', 'info');
+            
+            await checkConnection();
+            await testHealthCheck();
+            await register();
+            await login();
+            await getWallet();
+            await getBalance();
+            await getTransactions();
+            await generateWallet();
+            await getUSDCBalance();
+            await testRateLimit();
+            await testUnauthorized();
+            
+            addResult('🏁 All tests completed!', 'success');
+        }
+
+        // Initialize
+        updateTokenDisplay();
+        checkConnection();
+    </script>
+</body>
+</html>
