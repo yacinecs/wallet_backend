@@ -3,15 +3,13 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const { generalLimiter } = require("./middleware/rateLimiter");
-const { initializeDatabase } = require("../scripts/init-db");
 const app = express();
 require("dotenv").config();
 
 // Trust proxy for Railway deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
 
-// Initialize database on startup
-initializeDatabase().catch(console.error);
+// Don't initialize database on startup - do it lazily when needed
 
 // Security middleware
 app.use(helmet());

@@ -1,52 +1,93 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-// Use Railway's PostgreSQL URL if available, otherwise use individual env vars
-// Railway provides DATABASE_URL for postgres connections
+// Railway Database Configuration
 let pool;
+let connectionConfig;
 
-if (process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL) {
-  const connectionString = process.env.DATABASE_URL || process.env.RAILWAY_SERVICE_POSTGRES_URL;
-  console.log("🔗 Using database connection string:", connectionString.replace(/:[^:@]*@/, ':***@'));
+if (process.env.DATABASE_URL) {
+  // Parse Railway DATABASE_URL for better connection handling
+  const dbUrl = new URL(process.env.DATABASE_URL);
   
-  pool = new Pool({
-    connectionString: connectionString,
+  connectionConfig = {
+    host: dbUrl.hostname,
+    port: parseInt(dbUrl.port) || 5432,
+    user: dbUrl.username,
+    password: dbUrl.password,
+    database: dbUrl.pathname.slice(1), // Remove leading '/'
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 30000, // 30 seconds (increased from 10)
-    idleTimeoutMillis: 60000,       // 60 seconds (increased from 30)
-    max: 20,                        // Maximum pool size (increased from 10)
+    
+    // Railway-optimized connection settings
+    connectionTimeoutMillis: 60000,  // 60 seconds
+    idleTimeoutMillis: 30000,        // 30 seconds  
+    query_timeout: 60000,            // 60 seconds
+    statement_timeout: 60000,        // 60 seconds
+    max: 10,                         // Max connections
+    min: 2,                          // Min connections
+    
+    // Keep alive settings for Railway
     keepAlive: true,
-    keepAliveInitialDelayMillis: 0,
-  });
+    keepAliveInitialDelayMillis: 10000,
+    
+    // Application name for debugging
+    application_name: 'wallet_backend_railway'
+  };
+  
+  console.log("🔗 Using Railway PostgreSQL:", `${dbUrl.hostname}:${dbUrl.port}/${dbUrl.pathname.slice(1)}`);
+  
 } else {
-  console.log("🔗 Using individual database environment variables");
-  pool = new Pool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
+  // Fallback to individual environment variables
+  connectionConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
+    database: process.env.DB_NAME || 'wallet_app',
     port: process.env.DB_PORT || 5432,
     connectionTimeoutMillis: 30000,
-    idleTimeoutMillis: 60000,
-    max: 20,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 0,
-  });
+    idleTimeoutMillis: 30000,
+    max: 10,
+  };
+  
+  console.log("🔗 Using individual database environment variables");
 }
 
-pool.connect()
-  .then((client) => {
-    console.log("✅ Connected to PostgreSQL");
-    client.release();
-  })
-  .catch(err => {
-    console.error("❌ DB Connection Error:", err.message);
-    console.error("Connection details:", {
-      host: err.address || 'unknown',
-      port: err.port || 'unknown',
-      code: err.code,
-      syscall: err.syscall
-    });
-  });
+pool = new Pool(connectionConfig);
+
+// Test connection with retry logic
+async function testConnection(retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const client = await pool.connect();
+      console.log(`✅ Connected to PostgreSQL (attempt ${i + 1})`);
+      
+      // Test basic query
+      await client.query('SELECT NOW()');
+      console.log("✅ Database query test successful");
+      
+      client.release();
+      return true;
+    } catch (err) {
+      console.error(`❌ DB Connection Error (attempt ${i + 1}/${retries}):`, err.message);
+      
+      if (i === retries - 1) {
+        console.error("❌ All connection attempts failed");
+        console.error("Connection config:", {
+          host: connectionConfig.host,
+          port: connectionConfig.port,
+          database: connectionConfig.database,
+          user: connectionConfig.user,
+          ssl: connectionConfig.ssl
+        });
+      } else {
+        console.log(`⏳ Retrying in 2 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
+  return false;
+}
+
+// Test connection on startup
+testConnection();
 
 module.exports = pool;
