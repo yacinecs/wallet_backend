@@ -1,0 +1,17 @@
+# Exclude Flutter/Dart files from Railway deployment
+../lib/
+../android/
+../ios/
+../web/
+../linux/
+../macos/
+../windows/
+../test/
+../.dart_tool/
+../build/
+../pubspec.yaml
+../pubspec.lock
+../.gitignore
+../.metadata
+../analysis_options.yaml
+../README.md
