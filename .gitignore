@@ -11,6 +11,23 @@ yarn-error.log*
 .env.test
 .env.production
 
+# Test files and temporary scripts
+test-*.js
+check-*.js
+debug-*.js
+demo-*.html
+quick-*.js
+final-test.js
+migrate-*.js
+setup.*
+create-client-package.bat
+
+# Documentation files that are not needed in repo
+CLIENT_*.md
+DELIVERY_README.md
+FEATURES_AND_TECHNOLOGIES.md
+BLOCKCHAIN_INTEGRATION_COMPLETE.md
+
 # Database
 *.db
 *.sqlite
