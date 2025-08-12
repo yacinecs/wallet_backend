@@ -1,13 +1,16 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-// Railway Database Configuration
+// Railway Database Configuration - Prefer external URL over internal
 let pool;
 let connectionConfig;
 
-if (process.env.DATABASE_URL) {
+// Try external DATABASE_PUBLIC_URL first (better for Railway), then internal DATABASE_URL
+const databaseUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+
+if (databaseUrl) {
   // Parse Railway DATABASE_URL for better connection handling
-  const dbUrl = new URL(process.env.DATABASE_URL);
+  const dbUrl = new URL(databaseUrl);
   
   connectionConfig = {
     host: dbUrl.hostname,
@@ -33,7 +36,8 @@ if (process.env.DATABASE_URL) {
     application_name: 'wallet_backend_railway'
   };
   
-  console.log("🔗 Using Railway PostgreSQL:", `${dbUrl.hostname}:${dbUrl.port}/${dbUrl.pathname.slice(1)}`);
+  const dbType = process.env.DATABASE_PUBLIC_URL ? 'Railway External PostgreSQL' : 'Railway Internal PostgreSQL';
+  console.log(`🔗 Using ${dbType}:`, `${dbUrl.hostname}:${dbUrl.port}/${dbUrl.pathname.slice(1)}`);
   
 } else {
   // Fallback to individual environment variables
