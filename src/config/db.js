@@ -1,13 +1,19 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 5432,
-});
+// Use Railway's PostgreSQL URL if available, otherwise use individual env vars
+const pool = process.env.RAILWAY_SERVICE_POSTGRES_URL 
+  ? new Pool({
+      connectionString: process.env.RAILWAY_SERVICE_POSTGRES_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    })
+  : new Pool({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASS,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 5432,
+    });
 
 pool.connect()
   .then(() => console.log("✅ Connected to PostgreSQL"))
