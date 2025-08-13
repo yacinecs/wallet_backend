@@ -4,12 +4,11 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const { generalLimiter } = require("./middleware/rateLimiter");
 const app = express();
+const path = require("path");
 require("dotenv").config();
 
 // Trust proxy for Railway deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
-
-// Don't initialize database on startup - do it lazily when needed
 
 // Security middleware
 app.use(helmet());
@@ -18,6 +17,15 @@ app.use(morgan("combined"));
 app.use(generalLimiter); // Apply rate limiting to all routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve client tester at root and demo at /demo
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'railway-api-tester.html'));
+});
+
+app.get('/demo', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'demo-client.html'));
+});
 
 // Health check endpoints (no authentication required) - MUST be before other routes
 app.get("/health", (req, res) => {
