@@ -23,13 +23,9 @@ app.use(generalLimiter); // Apply rate limiting to all routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve client tester at root and demo at /demo
+// Serve client tester at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'railway-api-tester.html'));
-});
-
-app.get('/demo', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'demo-client.html'));
 });
 
 // Health check endpoints (no authentication required) - MUST be before other routes
