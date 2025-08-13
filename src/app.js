@@ -2,10 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const { generalLimiter } = require("./middleware/rateLimiter");
+const { generalLimiter, transactionLimiter } = require("./middleware/rateLimiter");
 const app = express();
 const path = require("path");
 require("dotenv").config();
+
+// Also need auth and wallet controller for direct alias routes
+const { authenticateToken } = require("./middleware/auth");
+const walletController = require("./controllers/walletController");
 
 // Trust proxy for Railway deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
@@ -35,6 +39,10 @@ app.get("/health", (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
+
+// Fallback alias routes to ensure deposit/withdraw exist under /api/transactions/*
+app.post('/api/transactions/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
+app.post('/api/transactions/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
 
 // Database test endpoint (for debugging Railway deployment)
 app.get("/test-db", async (req, res) => {
