@@ -1,3 +1,5 @@
+// Database connection setup using pg Pool
+// Chooses Railway internal DATABASE_URL when available for better networking
 const { Pool } = require("pg");
 require("dotenv").config();
 
@@ -91,7 +93,7 @@ async function testConnection(retries = 3) {
   return false;
 }
 
-// Test connection on startup
+// Test connection on startup (helps catch misconfig early)
 testConnection();
 
 module.exports = pool;

@@ -1,5 +1,10 @@
+providers = ["node"]
+
 [variables]
 NODE_VERSION = "18"
+
+[phases.install]
+cmd = "npm ci"
 
 [start]
 cmd = "npm start"

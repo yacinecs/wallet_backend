@@ -4,7 +4,6 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const { generalLimiter, transactionLimiter } = require("./middleware/rateLimiter");
 const app = express();
-const path = require("path");
 require("dotenv").config();
 
 // Also need auth and wallet controller for direct alias routes
@@ -16,29 +15,23 @@ const blockchainController = require("./controllers/blockchainController");
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(helmet());
-app.use(cors());
-app.options('*', cors()); // Handle preflight globally
-app.use(morgan("combined"));
-app.use(generalLimiter); // Apply rate limiting to all routes
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(helmet()); // Adds basic security headers
+app.use(cors());   // Allows cross-origin requests
+app.options('*', cors()); // Handles CORS preflight
+app.use(morgan("combined")); // Logs HTTP requests
+app.use(generalLimiter); // Rate limit all requests
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse forms
 
-// Serve client tester at root
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'railway-api-tester.html'));
-});
-
-// Health check endpoints (no authentication required) - MUST be before other routes
+// Health check endpoints (simple status endpoints)
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
-
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
 
-// Deposit/Withdraw aliases (wide compatibility)
+// Deposit/Withdraw aliases (multiple paths for client compatibility)
 app.post('/api/transactions/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
 app.post('/api/transactions/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
 app.post('/api/transaction/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
@@ -169,11 +162,11 @@ const walletRoutes = require("./routes/walletRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const blockchainRoutes = require("./routes/blockchain");
 
-// Auth routes (no conflicting paths)
-app.use("/api/auth", authRoutes);
-app.use("/api", walletRoutes);
-app.use("/api", transactionRoutes);
-app.use("/api", blockchainRoutes);
+// Mount API routes
+app.use("/api/auth", authRoutes);        // Login/Register
+app.use("/api", walletRoutes);           // Wallet operations
+app.use("/api", transactionRoutes);      // Transactions/history
+app.use("/api", blockchainRoutes);       // Blockchain read-only
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -181,7 +174,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
+// 404 handler (catch-all for unknown routes)
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
