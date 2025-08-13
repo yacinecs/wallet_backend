@@ -17,6 +17,7 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 app.use(cors());
+app.options('*', cors()); // Handle preflight globally
 app.use(morgan("combined"));
 app.use(generalLimiter); // Apply rate limiting to all routes
 app.use(express.json({ limit: '10mb' }));
@@ -40,9 +41,15 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
 
-// Fallback alias routes to ensure deposit/withdraw exist under /api/transactions/*
+// Deposit/Withdraw aliases (wide compatibility)
 app.post('/api/transactions/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
 app.post('/api/transactions/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
+app.post('/api/transaction/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
+app.post('/api/transaction/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
+app.post('/api/wallet/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
+app.post('/api/wallet/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
+app.post('/api/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
+app.post('/api/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
 
 // Database test endpoint (for debugging Railway deployment)
 app.get("/test-db", async (req, res) => {
