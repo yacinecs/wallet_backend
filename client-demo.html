@@ -109,22 +109,22 @@
     }
 
     async function deposit(amount){
-      const res = await fetch(`${base}/api/transactions/deposit`,{
+      const res = await fetch(`${base}/api/wallet/add`,{
         method:'POST', headers:{
           'Content-Type':'application/json',
           'Authorization': `Bearer ${token}`
-        }, body: JSON.stringify({ amount })
+        }, body: JSON.stringify({ amount, description: 'Deposit via client-demo' })
       });
       const data = await json(res);
       document.getElementById('walletOut').textContent = JSON.stringify(data, null, 2);
     }
 
     async function withdraw(amount){
-      const res = await fetch(`${base}/api/transactions/withdraw`,{
+      const res = await fetch(`${base}/api/wallet/subtract`,{
         method:'POST', headers:{
           'Content-Type':'application/json',
           'Authorization': `Bearer ${token}`
-        }, body: JSON.stringify({ amount })
+        }, body: JSON.stringify({ amount, description: 'Withdraw via client-demo' })
       });
       const data = await json(res);
       document.getElementById('walletOut').textContent = JSON.stringify(data, null, 2);
