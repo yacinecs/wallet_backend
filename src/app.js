@@ -10,6 +10,7 @@ require("dotenv").config();
 // Also need auth and wallet controller for direct alias routes
 const { authenticateToken } = require("./middleware/auth");
 const walletController = require("./controllers/walletController");
+const blockchainController = require("./controllers/blockchainController");
 
 // Trust proxy for Railway deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
@@ -46,6 +47,11 @@ app.post('/api/wallet/deposit', authenticateToken, transactionLimiter, walletCon
 app.post('/api/wallet/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
 app.post('/api/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
 app.post('/api/withdraw', authenticateToken, transactionLimiter, walletController.subtractMoney);
+
+// Blockchain routes (direct mount to avoid 404s)
+app.post('/api/blockchain/generate-wallet', authenticateToken, blockchainController.generateWallet);
+app.get('/api/blockchain/balance', authenticateToken, blockchainController.getUSDCBalance);
+app.get('/api/blockchain/transactions', authenticateToken, blockchainController.getTransactions);
 
 // Database test endpoint (for debugging Railway deployment)
 app.get("/test-db", async (req, res) => {
