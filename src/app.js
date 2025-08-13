@@ -142,13 +142,13 @@ app.post("/setup-db", async (req, res) => {
 const authRoutes = require("./routes/auth");
 const walletRoutes = require("./routes/walletRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
+const blockchainRoutes = require("./routes/blockchain");
 
 // Auth routes (no conflicting paths)
 app.use("/api/auth", authRoutes);
-
-// Wallet and transaction routes (now only apply auth per endpoint)
 app.use("/api", walletRoutes);
 app.use("/api", transactionRoutes);
+app.use("/api", blockchainRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

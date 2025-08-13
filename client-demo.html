@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Wallet API Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; color: #222; }
+    h1 { font-size: 20px; }
+    input, button { padding: 8px; margin: 4px 0; width: 100%; max-width: 420px; }
+    button { cursor: pointer; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; max-width: 520px; }
+    .row { display: flex; gap: 8px; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 6px; overflow:auto; }
+    .ok { color: #0a7e29 }
+    .err { color: #b00020 }
+    small { color:#666 }
+  </style>
+</head>
+<body>
+  <h1>Wallet API Demo</h1>
+  <div class="card">
+    <strong>Backend:</strong>
+    <div id="baseUrl">https://brilliant-expression-production.up.railway.app</div>
+    <div id="health" class="ok">Health: checking...</div>
+  </div>
+
+  <div class="card">
+    <h3>1) Register</h3>
+    <input id="regEmail" placeholder="Email" type="email" />
+    <input id="regPass" placeholder="Password" type="password" />
+    <button onclick="register()">Register</button>
+    <pre id="regOut"></pre>
+  </div>
+
+  <div class="card">
+    <h3>2) Login</h3>
+    <input id="logEmail" placeholder="Email" type="email" />
+    <input id="logPass" placeholder="Password" type="password" />
+    <button onclick="login()">Login</button>
+    <pre id="logOut"></pre>
+  </div>
+
+  <div class="card">
+    <h3>3) Wallet</h3>
+    <div class="row">
+      <button onclick="getBalance()">Get Balance</button>
+      <button onclick="deposit(100)">Deposit 100</button>
+      <button onclick="withdraw(50)">Withdraw 50</button>
+    </div>
+    <pre id="walletOut"></pre>
+  </div>
+
+  <div class="card">
+    <h3>4) Transactions</h3>
+    <button onclick="getTx()">Get Transactions</button>
+    <pre id="txOut"></pre>
+  </div>
+
+  <script>
+    const base = document.getElementById('baseUrl').textContent.trim();
+    let token = '';
+
+    async function json(res){
+      const t = await res.text();
+      try { return JSON.parse(t) } catch { return { raw: t } }
+    }
+
+    async function checkHealth(){
+      try {
+        const res = await fetch(`${base}/health`);
+        const data = await res.json();
+        document.getElementById('health').textContent = `Health: ${data.status}`;
+      } catch(e){
+        document.getElementById('health').textContent = 'Health: ERROR';
+        document.getElementById('health').className = 'err';
+      }
+    }
+
+    async function register(){
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPass').value;
+      const res = await fetch(`${base}/api/auth/register`,{
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await json(res);
+      document.getElementById('regOut').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function login(){
+      const email = document.getElementById('logEmail').value;
+      const password = document.getElementById('logPass').value;
+      const res = await fetch(`${base}/api/auth/login`,{
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await json(res);
+      document.getElementById('logOut').textContent = JSON.stringify(data, null, 2);
+      if(data && data.token){ token = data.token; }
+    }
+
+    async function getBalance(){
+      const res = await fetch(`${base}/api/wallet/balance`,{
+        headers:{ 'Authorization': `Bearer ${token}` }
+      });
+      const data = await json(res);
+      document.getElementById('walletOut').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function deposit(amount){
+      const res = await fetch(`${base}/api/transactions/deposit`,{
+        method:'POST', headers:{
+          'Content-Type':'application/json',
+          'Authorization': `Bearer ${token}`
+        }, body: JSON.stringify({ amount })
+      });
+      const data = await json(res);
+      document.getElementById('walletOut').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function withdraw(amount){
+      const res = await fetch(`${base}/api/transactions/withdraw`,{
+        method:'POST', headers:{
+          'Content-Type':'application/json',
+          'Authorization': `Bearer ${token}`
+        }, body: JSON.stringify({ amount })
+      });
+      const data = await json(res);
+      document.getElementById('walletOut').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function getTx(){
+      const res = await fetch(`${base}/api/transactions`,{
+        headers:{ 'Authorization': `Bearer ${token}` }
+      });
+      const data = await json(res);
+      document.getElementById('txOut').textContent = JSON.stringify(data, null, 2);
+    }
+
+    checkHealth();
+  </script>
+</body>
+</html>
