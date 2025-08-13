@@ -1,8 +1,8 @@
 const { ethers } = require('ethers');
 
-const NETWORK = process.env.CHAIN_NETWORK || 'polygon-amoy'; // default to Polygon Amoy testnet
-const RPC_URL = process.env.CHAIN_RPC_URL; // e.g. https://polygon-amoy.g.alchemy.com/v2/KEY
-const USDC_ADDRESS = process.env.USDC_CONTRACT || '0x3c38cA2A6E1C8337F6bC64E360Ebd48fCF9D2b9c'; // Amoy testnet USDC (example)
+const NETWORK = process.env.CHAIN_NETWORK || 'base-mainnet';
+const RPC_URL = process.env.CHAIN_RPC_URL; // Required
+const USDC_ADDRESS = process.env.USDC_CONTRACT; // Required
 
 // Minimal ERC20 ABI
 const ERC20_ABI = [
@@ -15,14 +15,13 @@ const ERC20_ABI = [
 
 let provider;
 function getProvider() {
-  if (!provider) {
-    if (!RPC_URL) throw new Error('CHAIN_RPC_URL missing');
-    provider = new ethers.JsonRpcProvider(RPC_URL);
-  }
+  if (!RPC_URL) throw new Error('CHAIN_RPC_URL missing');
+  if (!provider) provider = new ethers.JsonRpcProvider(RPC_URL);
   return provider;
 }
 
 function getUsdcContract() {
+  if (!USDC_ADDRESS) throw new Error('USDC_CONTRACT missing');
   return new ethers.Contract(USDC_ADDRESS, ERC20_ABI, getProvider());
 }
 
@@ -41,8 +40,7 @@ async function listTransfers(address, fromBlock, toBlock) {
   const token = getUsdcContract();
   const filterIn = token.filters.Transfer(null, address);
   const filterOut = token.filters.Transfer(address, null);
-  const provider = getProvider();
-  const latest = await provider.getBlockNumber();
+  const latest = await getProvider().getBlockNumber();
   const start = fromBlock ?? Math.max(0, latest - 10_000);
   const end = toBlock ?? latest;
   const [ins, outs] = await Promise.all([
