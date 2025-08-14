@@ -30,6 +30,18 @@ app.get("/health", (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Wallet API is running" });
 });
+// Version/build info endpoint to verify deployed commit
+app.get('/version', (req, res) => {
+  const commit = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT || null;
+  const branch = process.env.RAILWAY_GIT_BRANCH || null;
+  res.json({
+    name: require('../package.json').name,
+    version: require('../package.json').version,
+    commit,
+    branch,
+    time: new Date().toISOString()
+  });
+});
 
 // Deposit/Withdraw aliases (multiple paths for client compatibility)
 app.post('/api/transactions/deposit', authenticateToken, transactionLimiter, walletController.addMoney);
