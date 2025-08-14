@@ -27,13 +27,14 @@ function getUsdcContract() {
 
 async function getUsdcBalance(address) {
   const token = getUsdcContract();
-  const [raw, decimals, symbol] = await Promise.all([
+  const [raw, dec, sym] = await Promise.all([
     token.balanceOf(address),
     token.decimals(),
     token.symbol(),
   ]);
-  const formatted = Number(ethers.formatUnits(raw, decimals));
-  return { symbol, decimals, raw: raw.toString(), formatted };
+  const decimals = Number(dec); // ensure JSON-safe
+  const formatted = ethers.formatUnits(raw, decimals); // string
+  return { symbol: String(sym), decimals, raw: raw.toString(), formatted };
 }
 
 async function listTransfers(address, fromBlock, toBlock) {
@@ -50,10 +51,10 @@ async function listTransfers(address, fromBlock, toBlock) {
   return [...ins, ...outs]
     .sort((a, b) => (a.blockNumber - b.blockNumber))
     .map(ev => ({
-      blockNumber: ev.blockNumber,
-      txHash: ev.transactionHash,
-      from: ev.args.from,
-      to: ev.args.to,
+      blockNumber: Number(ev.blockNumber),
+      txHash: String(ev.transactionHash),
+      from: String(ev.args.from),
+      to: String(ev.args.to),
       value: ev.args.value.toString(),
     }));
 }
