@@ -19,6 +19,10 @@ app.use(helmet()); // Adds basic security headers
 app.use(cors());   // Allows cross-origin requests
 // In Express 5, wildcard '*' route strings are not supported by path-to-regexp. Use a RegExp instead.
 app.options(/.*/, cors()); // Handles CORS preflight for all routes
+
+// Ensure JSON safely serializes BigInt values
+app.set('json replacer', (key, value) => (typeof value === 'bigint' ? value.toString() : value));
+
 app.use(morgan("combined")); // Logs HTTP requests
 app.use(generalLimiter); // Rate limit all requests
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
