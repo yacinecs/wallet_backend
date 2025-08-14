@@ -37,26 +37,48 @@ async function getUsdcBalance(address) {
   return { symbol: String(sym), decimals, raw: raw.toString(), formatted };
 }
 
+// Chunked log retrieval to satisfy provider limits (e.g., 500-block windows)
 async function listTransfers(address, fromBlock, toBlock) {
   const token = getUsdcContract();
-  const filterIn = token.filters.Transfer(null, address);
-  const filterOut = token.filters.Transfer(address, null);
   const latest = await getProvider().getBlockNumber();
-  const start = fromBlock ?? Math.max(0, latest - 10_000);
-  const end = toBlock ?? latest;
-  const [ins, outs] = await Promise.all([
-    token.queryFilter(filterIn, start, end),
-    token.queryFilter(filterOut, start, end),
-  ]);
-  return [...ins, ...outs]
-    .sort((a, b) => (a.blockNumber - b.blockNumber))
-    .map(ev => ({
-      blockNumber: Number(ev.blockNumber),
-      txHash: String(ev.transactionHash),
-      from: String(ev.args.from),
-      to: String(ev.args.to),
-      value: ev.args.value.toString(),
-    }));
+  const window = Math.max(100, Math.min(2000, Number(process.env.LOGS_BLOCK_WINDOW) || 500));
+  let end = toBlock ?? latest;
+  let start = fromBlock ?? Math.max(0, end - window);
+
+  const results = [];
+  // Limit total chunks to avoid excessive RPC calls
+  const maxChunks = Number(process.env.LOGS_MAX_CHUNKS) || 5;
+  let chunks = 0;
+
+  while (chunks < maxChunks && end >= 0) {
+    const filterIn = token.filters.Transfer(null, address);
+    const filterOut = token.filters.Transfer(address, null);
+
+    const [ins, outs] = await Promise.all([
+      token.queryFilter(filterIn, start, end),
+      token.queryFilter(filterOut, start, end),
+    ]);
+
+    for (const ev of [...ins, ...outs]) {
+      results.push({
+        blockNumber: Number(ev.blockNumber),
+        txHash: String(ev.transactionHash),
+        from: String(ev.args.from),
+        to: String(ev.args.to),
+        value: ev.args.value.toString(),
+      });
+    }
+
+    // Prepare next chunk going backwards
+    end = start - 1;
+    if (end < 0) break;
+    start = Math.max(0, end - window);
+    chunks += 1;
+  }
+
+  // Sort ascending by block
+  results.sort((a, b) => a.blockNumber - b.blockNumber);
+  return results;
 }
 
 module.exports = {
