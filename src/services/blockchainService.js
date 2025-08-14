@@ -37,20 +37,26 @@ async function getUsdcBalance(address) {
   return { symbol: String(sym), decimals, raw: raw.toString(), formatted };
 }
 
-// Chunked log retrieval to satisfy provider limits (e.g., 500-block windows)
+// Chunked log retrieval to satisfy provider limits (e.g., 500-block windows, inclusive)
 async function listTransfers(address, fromBlock, toBlock) {
   const token = getUsdcContract();
   const latest = await getProvider().getBlockNumber();
   const window = Math.max(100, Math.min(2000, Number(process.env.LOGS_BLOCK_WINDOW) || 500));
+
+  // Ensure inclusive range size <= window, i.e., (end - start + 1) <= window
   let end = toBlock ?? latest;
-  let start = fromBlock ?? Math.max(0, end - window);
+  let start = fromBlock ?? Math.max(0, end - (window - 1));
 
   const results = [];
-  // Limit total chunks to avoid excessive RPC calls
   const maxChunks = Number(process.env.LOGS_MAX_CHUNKS) || 5;
   let chunks = 0;
 
   while (chunks < maxChunks && end >= 0) {
+    // Safety clamp in case inputs were provided
+    if (end - start + 1 > window) {
+      start = Math.max(0, end - (window - 1));
+    }
+
     const filterIn = token.filters.Transfer(null, address);
     const filterOut = token.filters.Transfer(address, null);
 
@@ -72,11 +78,10 @@ async function listTransfers(address, fromBlock, toBlock) {
     // Prepare next chunk going backwards
     end = start - 1;
     if (end < 0) break;
-    start = Math.max(0, end - window);
+    start = Math.max(0, end - (window - 1));
     chunks += 1;
   }
 
-  // Sort ascending by block
   results.sort((a, b) => a.blockNumber - b.blockNumber);
   return results;
 }
