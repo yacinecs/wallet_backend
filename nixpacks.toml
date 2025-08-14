@@ -1,8 +1,2 @@
-[variables]
-NODE_VERSION = "18"
-
-[phases.install]
-cmd = "npm ci"
-
-[start]
-cmd = "npm start"
+# Intentionally left empty so Nixpacks auto-detects Node from package.json
+# Remove this file if you prefer, but leaving it empty avoids parser issues.
