@@ -17,7 +17,8 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet()); // Adds basic security headers
 app.use(cors());   // Allows cross-origin requests
-app.options('*', cors()); // Handles CORS preflight
+// In Express 5, wildcard '*' route strings are not supported by path-to-regexp. Use a RegExp instead.
+app.options(/.*/, cors()); // Handles CORS preflight for all routes
 app.use(morgan("combined")); // Logs HTTP requests
 app.use(generalLimiter); // Rate limit all requests
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
