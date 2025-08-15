@@ -3,6 +3,7 @@ const { ethers } = require('ethers');
 const NETWORK = process.env.CHAIN_NETWORK || 'base-mainnet';
 const RPC_URL = process.env.CHAIN_RPC_URL; // Required
 const USDC_ADDRESS = process.env.USDC_CONTRACT; // Required
+const PRIVATE_KEY = process.env.CHAIN_PRIVATE_KEY; // Optional (required for send)
 
 // Minimal ERC20 ABI
 const ERC20_ABI = [
@@ -20,6 +21,17 @@ function getProvider() {
   return provider;
 }
 
+let signer;
+function getSigner() {
+  if (!PRIVATE_KEY) throw new Error('CHAIN_PRIVATE_KEY missing');
+  if (!signer) signer = new ethers.Wallet(PRIVATE_KEY, getProvider());
+  return signer;
+}
+
+async function getSignerAddress() {
+  return getSigner().address;
+}
+
 function getUsdcContract() {
   if (!USDC_ADDRESS) throw new Error('USDC_CONTRACT missing');
   return new ethers.Contract(USDC_ADDRESS, ERC20_ABI, getProvider());
@@ -35,6 +47,26 @@ async function getUsdcBalance(address) {
   const decimals = Number(dec); // ensure JSON-safe
   const formatted = ethers.formatUnits(raw, decimals); // string
   return { symbol: String(sym), decimals, raw: raw.toString(), formatted };
+}
+
+// Send USDC from custodial signer to a destination address
+async function sendUsdc({ to, amount }) {
+  if (!ethers.isAddress(to)) throw new Error('Invalid recipient address');
+  const token = getUsdcContract();
+  const dec = Number(await token.decimals());
+  if (typeof amount !== 'number' && typeof amount !== 'string') throw new Error('Amount must be number or string');
+  const amtNum = typeof amount === 'string' ? Number(amount) : amount;
+  if (!amtNum || amtNum <= 0) throw new Error('Amount must be positive');
+  const value = ethers.parseUnits(amtNum.toString(), dec);
+
+  const connected = token.connect(getSigner());
+  const tx = await connected.transfer(to, value);
+  const receipt = await tx.wait();
+  return {
+    txHash: String(tx.hash),
+    status: receipt?.status === 1 ? 'success' : 'failed',
+    blockNumber: receipt?.blockNumber ? Number(receipt.blockNumber) : null,
+  };
 }
 
 // Chunked log retrieval to satisfy provider limits (e.g., 500-block windows, inclusive)
@@ -86,9 +118,26 @@ async function listTransfers(address, fromBlock, toBlock) {
   return results;
 }
 
+async function getSignerUsdcBalance() {
+  const addr = await getSignerAddress();
+  const bal = await getUsdcBalance(addr);
+  return { address: addr, ...bal };
+}
+
+async function getTxReceipt(txHash) {
+  if (!txHash || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error('Invalid tx hash');
+  const receipt = await getProvider().getTransactionReceipt(txHash);
+  return receipt || null;
+}
+
 module.exports = {
   getProvider,
+  getSigner,
+  getSignerAddress,
   getUsdcContract,
   getUsdcBalance,
+  sendUsdc,
   listTransfers,
+  getSignerUsdcBalance,
+  getTxReceipt,
 };

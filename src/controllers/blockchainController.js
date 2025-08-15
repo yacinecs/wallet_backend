@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const { getUsdcBalance, listTransfers } = require('../services/blockchainService');
+const { getUsdcBalance, listTransfers, getSignerAddress: svcGetSignerAddress, sendUsdc, getSignerUsdcBalance, getTxReceipt } = require('../services/blockchainService');
 const crypto = require('crypto');
 
 exports.generateWallet = async (req, res) => {
@@ -40,5 +40,63 @@ exports.getTransactions = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Server Error' });
+  }
+};
+
+// Custodial: return signer address (requires CHAIN_PRIVATE_KEY)
+exports.getCustodialAddress = async (req, res) => {
+  try {
+    const address = await svcGetSignerAddress();
+    res.json({ network: process.env.CHAIN_NETWORK || 'unknown', address });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Server Error' });
+  }
+};
+
+// Custodial: send USDC from signer to recipient
+exports.sendUSDC = async (req, res) => {
+  try {
+    const { to, amount } = req.body || {};
+    if (!to || amount === undefined || amount === null) {
+      return res.status(400).json({ error: 'to and amount are required' });
+    }
+    const result = await sendUsdc({ to, amount });
+    const code = result.status === 'success' ? 201 : 500;
+    res.status(code).json({ network: process.env.CHAIN_NETWORK || 'unknown', ...result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Server Error' });
+  }
+};
+
+// Custodial: read signer USDC balance
+exports.getCustodialSignerBalance = async (req, res) => {
+  try {
+    const bal = await getSignerUsdcBalance();
+    res.json({ network: process.env.CHAIN_NETWORK || 'unknown', ...bal });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Server Error' });
+  }
+};
+
+// Get transaction status by hash
+exports.getTxStatus = async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const receipt = await getTxReceipt(hash);
+    if (!receipt) return res.status(404).json({ error: 'Transaction not found' });
+    res.json({
+      hash,
+      blockNumber: receipt.blockNumber ?? null,
+      status: receipt.status === 1 ? 'success' : receipt.status === 0 ? 'failed' : 'pending',
+      from: receipt.from,
+      to: receipt.to,
+      gasUsed: receipt.gasUsed ? receipt.gasUsed.toString() : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message || 'Bad Request' });
   }
 };
